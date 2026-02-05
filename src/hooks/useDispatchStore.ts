@@ -1,5 +1,5 @@
  import { create } from "zustand";
- import { Service, Technician, KPIs } from "@/types/dispatch";
+import { Service, Technician, KPIs, TimelineFilters } from "@/types/dispatch";
  import { mockServices, mockTechnicians } from "@/data/mockData";
  
  interface DispatchState {
@@ -11,6 +11,7 @@
    searchQuery: string;
    kpis: KPIs;
    validationError: string | null;
+  timelineFilters: TimelineFilters;
    
    // Actions
    setSelectedServiceIds: (ids: string[]) => void;
@@ -23,8 +24,19 @@
    moveService: (serviceId: string, newTechnicianId: string, newStartTime: string) => void;
    setValidationError: (error: string | null) => void;
    calculateKPIs: () => void;
+  setTimelineFilters: (filters: Partial<TimelineFilters>) => void;
+  clearTimelineFilters: () => void;
  }
  
+const defaultTimelineFilters: TimelineFilters = {
+  zone: null,
+  specialty: null,
+  responsible: null,
+  serviceNumber: "",
+  viewMode: "day",
+  currentDate: new Date(),
+};
+
  export const useDispatchStore = create<DispatchState>((set, get) => ({
    services: mockServices,
    technicians: mockTechnicians,
@@ -33,6 +45,7 @@
    priorityFilter: null,
    searchQuery: "",
    validationError: null,
+  timelineFilters: defaultTimelineFilters,
    kpis: {
      totalServices: mockServices.length,
      assignedServices: mockServices.filter(s => s.status === "assigned").length,
@@ -119,4 +132,10 @@
        totalKm: Math.round(state.services.filter(s => s.status === "assigned").length * 12),
      }
    })),
+  
+  setTimelineFilters: (filters) => set((state) => ({
+    timelineFilters: { ...state.timelineFilters, ...filters }
+  })),
+  
+  clearTimelineFilters: () => set({ timelineFilters: defaultTimelineFilters }),
  }));
