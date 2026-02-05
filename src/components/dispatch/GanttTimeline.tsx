@@ -3,7 +3,8 @@
  import { Service, Technician } from "@/types/dispatch";
  import { WORK_START_HOUR, WORK_END_HOUR, TIME_SLOT_MINUTES } from "@/data/mockData";
  import { cn } from "@/lib/utils";
- import { Car, User, Percent } from "lucide-react";
+import { Car, Percent } from "lucide-react";
+import { TimelineControls } from "./TimelineControls";
  
  const techColors: Record<string, string> = {
    "tech-1": "bg-tech-1",
@@ -234,27 +235,32 @@
  
  export function GanttTimeline() {
    const technicians = useDispatchStore((state) => state.technicians);
+  const timelineFilters = useDispatchStore((state) => state.timelineFilters);
+
+  // Filter technicians based on timeline filters
+  const filteredTechnicians = technicians.filter((tech) => {
+    if (timelineFilters.responsible && tech.id !== timelineFilters.responsible) {
+      return false;
+    }
+    if (timelineFilters.specialty && !tech.specialties.includes(timelineFilters.specialty)) {
+      return false;
+    }
+    return true;
+  });
  
    return (
-     <div className="h-64 bg-card border-t border-border flex flex-col">
-       <div className="panel-header flex-shrink-0">
-         <span className="flex items-center gap-2">
-           <User className="w-4 h-4" />
-           Timeline de Recursos
-         </span>
-         <div className="flex items-center gap-3 text-2xs text-panel-header-foreground/80">
-           <span className="flex items-center gap-1">
-             <div className="w-3 h-1 bg-travel-block rounded-full" />
-             Desplazamiento
-           </span>
-           <span>Escala: {TIME_SLOT_MINUTES} min</span>
-         </div>
-       </div>
-       <div className="flex-1 overflow-auto">
+    <div className="flex-1 bg-card border-t border-border flex flex-col min-h-0">
+      <TimelineControls />
+      <div className="flex-1 overflow-auto min-h-0">
          <TimeHeader />
-         {technicians.map((technician) => (
+        {filteredTechnicians.map((technician) => (
            <TechnicianRow key={technician.id} technician={technician} />
          ))}
+        {filteredTechnicians.length === 0 && (
+          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+            No hay técnicos que coincidan con los filtros
+          </div>
+        )}
        </div>
      </div>
    );
