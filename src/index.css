@@ -2,95 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Dispatch Console Design System - Compact, Data-Dense, Professional */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    /* Teal Primary - #00897B */
+    --primary: 174 100% 27%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 174 100% 22%;
+    --primary-light: 174 50% 95%;
+    
+    /* Background & Surfaces */
+    --background: 210 20% 98%;
+    --foreground: 220 20% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 220 20% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
+    --popover-foreground: 220 20% 15%;
+    
+    /* Secondary & Muted */
+    --secondary: 210 15% 93%;
+    --secondary-foreground: 220 20% 25%;
+    --muted: 210 15% 96%;
+    --muted-foreground: 220 10% 50%;
+    
+    /* Accent */
+    --accent: 174 50% 95%;
+    --accent-foreground: 174 100% 20%;
+    
+    /* Priority Colors */
+    --priority-high: 0 85% 60%;
+    --priority-medium: 45 95% 55%;
+    --priority-low: 145 65% 45%;
+    
+    /* Technician Colors */
+    --tech-1: 174 100% 27%;
+    --tech-2: 262 83% 58%;
+    --tech-3: 25 95% 55%;
+    --tech-4: 199 89% 48%;
+    --tech-5: 340 82% 52%;
+    --tech-6: 45 95% 55%;
+    
+    /* Status Colors */
+    --status-assigned: 199 89% 48%;
+    --status-in-progress: 174 100% 27%;
+    --status-completed: 145 65% 45%;
+    --status-travel: 220 10% 70%;
+    
+    /* Destructive */
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* UI Elements */
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 174 100% 27%;
     --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
+    
+    /* Sidebar */
+    --sidebar-background: 220 20% 16%;
     --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
+    --sidebar-primary: 174 100% 27%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 22%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 20% 25%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Panel specific */
+    --panel-header: 220 20% 16%;
+    --panel-header-foreground: 0 0% 100%;
+    --timeline-bg: 210 15% 96%;
+    --timeline-grid: 220 15% 90%;
+    
+    /* Gantt specific */
+    --gantt-row-odd: 0 0% 100%;
+    --gantt-row-even: 210 15% 98%;
+    --travel-block: 220 10% 75%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 220 20% 10%;
+    --foreground: 0 0% 95%;
+    --card: 220 20% 14%;
+    --card-foreground: 0 0% 95%;
+    --popover: 220 20% 14%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 174 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 20%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 220 20% 18%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 174 30% 20%;
+    --accent-foreground: 174 100% 60%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 22%;
+    --input: 220 20% 22%;
+    --ring: 174 100% 35%;
   }
 }
 
@@ -98,8 +108,78 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  .panel-header {
+    @apply bg-panel-header text-panel-header-foreground px-3 py-2 text-sm font-medium flex items-center justify-between;
+  }
+  
+  .service-card {
+    @apply bg-card border border-border rounded-md p-2 text-xs shadow-sm hover:shadow-md transition-shadow cursor-pointer;
+  }
+  
+  .service-card-selected {
+    @apply ring-2 ring-primary ring-offset-1;
+  }
+  
+  .priority-badge {
+    @apply inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase;
+  }
+  
+  .priority-high {
+    @apply bg-red-100 text-red-700;
+  }
+  
+  .priority-medium {
+    @apply bg-yellow-100 text-yellow-700;
+  }
+  
+  .priority-low {
+    @apply bg-green-100 text-green-700;
+  }
+  
+  .gantt-row {
+    @apply flex items-center h-14 border-b border-border;
+  }
+  
+  .gantt-row:nth-child(odd) {
+    @apply bg-gantt-row-odd;
+  }
+  
+  .gantt-row:nth-child(even) {
+    @apply bg-gantt-row-even;
+  }
+  
+  .service-block {
+    @apply absolute rounded shadow-md text-[10px] font-medium px-1.5 py-1 cursor-grab active:cursor-grabbing transition-all;
+  }
+  
+  .service-block:hover {
+    @apply shadow-lg scale-[1.02];
+  }
+  
+  .travel-block {
+    @apply absolute h-2 bg-travel-block rounded-full top-1/2 -translate-y-1/2 opacity-60;
+  }
+  
+  .kpi-card {
+    @apply bg-card border border-border rounded-lg px-4 py-2 flex flex-col;
+  }
+  
+  .action-btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors;
+  }
+  
+  .action-btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+  
+  .action-btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
   }
 }
