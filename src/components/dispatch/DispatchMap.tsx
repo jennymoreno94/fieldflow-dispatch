@@ -1,11 +1,10 @@
  import { useEffect, useRef } from "react";
- import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
  import L from "leaflet";
  import { useDispatchStore } from "@/hooks/useDispatchStore";
  import { RotateCw, Crosshair, Car } from "lucide-react";
  import "leaflet/dist/leaflet.css";
  
- // Fix for default marker icons in React-Leaflet
+ // Fix for default marker icons
  delete (L.Icon.Default.prototype as any)._getIconUrl;
  L.Icon.Default.mergeOptions({
    iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -36,52 +35,130 @@
    });
  }
  
- function MapController({ selectedTechnicianId }: { selectedTechnicianId: string | null }) {
-   const map = useMap();
-   const services = useDispatchStore((state) => state.services);
- 
-   useEffect(() => {
-     if (selectedTechnicianId) {
-       const techServices = services.filter(s => s.technicianId === selectedTechnicianId);
-       if (techServices.length > 0) {
-         const bounds = L.latLngBounds(techServices.map(s => [s.lat, s.lng]));
-         map.fitBounds(bounds, { padding: [50, 50] });
-       }
-     }
-   }, [selectedTechnicianId, services, map]);
- 
-   return null;
- }
- 
  export function DispatchMap() {
    const services = useDispatchStore((state) => state.services);
    const technicians = useDispatchStore((state) => state.technicians);
    const selectedTechnicianId = useDispatchStore((state) => state.selectedTechnicianId);
    const setSelectedTechnicianId = useDispatchStore((state) => state.setSelectedTechnicianId);
+   
+   const mapContainerRef = useRef<HTMLDivElement>(null);
    const mapRef = useRef<L.Map | null>(null);
+   const markersRef = useRef<L.Marker[]>([]);
+   const polylinesRef = useRef<L.Polyline[]>([]);
  
    const assignedServices = services.filter(s => s.status === "assigned");
    const unassignedServices = services.filter(s => s.status === "unassigned");
  
-   // Group services by technician for route lines
-   const technicianRoutes = technicians.map(tech => {
-     const techServices = assignedServices
-       .filter(s => s.technicianId === tech.id)
-       .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
-     return {
-       technician: tech,
-       services: techServices,
-       color: techColors[tech.color] || "#666",
+   // Initialize map
+   useEffect(() => {
+     if (!mapContainerRef.current || mapRef.current) return;
+ 
+     const map = L.map(mapContainerRef.current).setView([4.65, -74.07], 12);
+     
+     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+     }).addTo(map);
+ 
+     mapRef.current = map;
+ 
+     return () => {
+       map.remove();
+       mapRef.current = null;
      };
-   });
+   }, []);
+ 
+   // Update markers and polylines
+   useEffect(() => {
+     if (!mapRef.current) return;
+ 
+     // Clear existing markers and polylines
+     markersRef.current.forEach(marker => marker.remove());
+     polylinesRef.current.forEach(polyline => polyline.remove());
+     markersRef.current = [];
+     polylinesRef.current = [];
+ 
+     // Group services by technician for route lines
+     const technicianRoutes = technicians.map(tech => {
+       const techServices = assignedServices
+         .filter(s => s.technicianId === tech.id)
+         .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+       return {
+         technician: tech,
+         services: techServices,
+         color: techColors[tech.color] || "#666",
+       };
+     });
+ 
+     // Draw polylines
+     technicianRoutes.forEach(({ technician, services: techServices, color }) => {
+       if (techServices.length < 2) return;
+       const positions = techServices.map(s => [s.lat, s.lng] as [number, number]);
+       const polyline = L.polyline(positions, {
+         color,
+         weight: 3,
+         opacity: selectedTechnicianId && selectedTechnicianId !== technician.id ? 0.3 : 0.8,
+         dashArray: selectedTechnicianId === technician.id ? undefined : "5, 5",
+       }).addTo(mapRef.current!);
+       polylinesRef.current.push(polyline);
+     });
+ 
+     // Add assigned service markers
+     technicianRoutes.forEach(({ technician, services: techServices, color }) => {
+       techServices.forEach(service => {
+         const marker = L.marker([service.lat, service.lng], {
+           icon: createColoredMarker(color),
+           opacity: selectedTechnicianId && selectedTechnicianId !== technician.id ? 0.4 : 1,
+         }).addTo(mapRef.current!);
+         
+         marker.bindPopup(`
+           <div style="font-size: 12px;">
+             <p style="font-weight: 600; margin: 0;">${service.id}</p>
+             <p style="margin: 2px 0;">${service.clientName}</p>
+             <p style="color: #6b7280; margin: 2px 0;">${service.timeWindow}</p>
+             <p style="margin-top: 4px; font-weight: 500; color: ${color};">${technician.name}</p>
+           </div>
+         `);
+         
+         marker.on("click", () => setSelectedTechnicianId(technician.id));
+         markersRef.current.push(marker);
+       });
+     });
+ 
+     // Add unassigned service markers
+     unassignedServices.forEach(service => {
+       const marker = L.marker([service.lat, service.lng], {
+         icon: createColoredMarker("#EF4444", true),
+       }).addTo(mapRef.current!);
+       
+       marker.bindPopup(`
+         <div style="font-size: 12px;">
+           <p style="font-weight: 600; color: #EF4444; margin: 0;">${service.id} (Sin Asignar)</p>
+           <p style="margin: 2px 0;">${service.clientName}</p>
+           <p style="color: #6b7280; margin: 2px 0;">${service.timeWindow}</p>
+         </div>
+       `);
+       
+       markersRef.current.push(marker);
+     });
+   }, [services, technicians, selectedTechnicianId, assignedServices, unassignedServices, setSelectedTechnicianId]);
+ 
+   // Focus on selected technician
+   useEffect(() => {
+     if (!mapRef.current || !selectedTechnicianId) return;
+ 
+     const techServices = services.filter(s => s.technicianId === selectedTechnicianId);
+     if (techServices.length > 0) {
+       const bounds = L.latLngBounds(techServices.map(s => [s.lat, s.lng]));
+       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+     }
+   }, [selectedTechnicianId, services]);
  
    const handleCenterMap = () => {
-     if (mapRef.current) {
-       const allCoords = services.map(s => [s.lat, s.lng] as [number, number]);
-       if (allCoords.length > 0) {
-         const bounds = L.latLngBounds(allCoords);
-         mapRef.current.fitBounds(bounds, { padding: [30, 30] });
-       }
+     if (!mapRef.current) return;
+     const allCoords = services.map(s => [s.lat, s.lng] as [number, number]);
+     if (allCoords.length > 0) {
+       const bounds = L.latLngBounds(allCoords);
+       mapRef.current.fitBounds(bounds, { padding: [30, 30] });
      }
    };
  
@@ -106,81 +183,10 @@
        </div>
  
        <div className="flex-1 relative">
-         <MapContainer
-           center={[4.65, -74.07]}
-           zoom={12}
-           className="w-full h-full"
-           ref={mapRef}
-         >
-           <TileLayer
-             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-           />
-           
-           <MapController selectedTechnicianId={selectedTechnicianId} />
- 
-           {/* Route polylines */}
-           {technicianRoutes.map(({ technician, services, color }) => {
-             if (services.length < 2) return null;
-             const positions = services.map(s => [s.lat, s.lng] as [number, number]);
-             return (
-               <Polyline
-                 key={technician.id}
-                 positions={positions}
-                 color={color}
-                 weight={3}
-                 opacity={selectedTechnicianId && selectedTechnicianId !== technician.id ? 0.3 : 0.8}
-                 dashArray={selectedTechnicianId === technician.id ? undefined : "5, 5"}
-               />
-             );
-           })}
- 
-           {/* Assigned service markers */}
-           {technicianRoutes.map(({ technician, services, color }) => 
-             services.map((service) => (
-               <Marker
-                 key={service.id}
-                 position={[service.lat, service.lng]}
-                 icon={createColoredMarker(color)}
-                 opacity={selectedTechnicianId && selectedTechnicianId !== technician.id ? 0.4 : 1}
-                 eventHandlers={{
-                   click: () => setSelectedTechnicianId(technician.id),
-                 }}
-               >
-                 <Popup>
-                   <div className="text-xs">
-                     <p className="font-semibold">{service.id}</p>
-                     <p>{service.clientName}</p>
-                     <p className="text-muted-foreground">{service.timeWindow}</p>
-                     <p className="mt-1 font-medium" style={{ color }}>
-                       {technician.name}
-                     </p>
-                   </div>
-                 </Popup>
-               </Marker>
-             ))
-           )}
- 
-           {/* Unassigned service markers */}
-           {unassignedServices.map((service) => (
-             <Marker
-               key={service.id}
-               position={[service.lat, service.lng]}
-               icon={createColoredMarker("#EF4444", true)}
-             >
-               <Popup>
-                 <div className="text-xs">
-                   <p className="font-semibold text-destructive">{service.id} (Sin Asignar)</p>
-                   <p>{service.clientName}</p>
-                   <p className="text-muted-foreground">{service.timeWindow}</p>
-                 </div>
-               </Popup>
-             </Marker>
-           ))}
-         </MapContainer>
+         <div ref={mapContainerRef} className="w-full h-full" />
  
          {/* Legend */}
-         <div className="absolute bottom-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
+         <div className="absolute bottom-4 left-4 bg-card/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg z-[1000]">
            <p className="text-2xs font-semibold text-muted-foreground mb-2">TÉCNICOS</p>
            <div className="space-y-1.5">
              {technicians.map((tech) => (
