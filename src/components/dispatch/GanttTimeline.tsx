@@ -84,31 +84,60 @@ function DayTimeHeader() {
 
 function WeekTimeHeader({ weekDays, currentDate }: { weekDays: Date[]; currentDate: Date }) {
   const today = new Date();
+  const slots = useMemo(() => generateTimeSlots(), []);
+  const totalSlots = slots.length;
+
   return (
     <div className="flex border-b border-border bg-muted sticky top-0 z-10">
       <div className="w-56 flex-shrink-0 border-r border-border" />
-      <div className="flex-1 flex">
-        {weekDays.map((day) => {
-          const isToday = isSameDay(day, today);
-          const isSelected = isSameDay(day, currentDate);
-          return (
-            <div
-              key={day.toISOString()}
-              className={cn(
-                "flex-1 h-8 flex items-center justify-center text-xs font-medium border-l border-border",
-                isToday && "bg-primary/15 text-primary font-bold",
-                isSelected && !isToday && "bg-accent"
-              )}
-            >
-              <span className="capitalize">
-                {format(day, "EEE", { locale: es })}
-              </span>
-              <span className={cn("ml-1", isToday && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-2xs")}>
-                {format(day, "dd")}
-              </span>
+      <div className="flex-1 overflow-x-auto" style={{ minWidth: `${weekDays.length * totalSlots * 40}px` }}>
+        {/* Day labels row */}
+        <div className="flex h-6">
+          {weekDays.map((day) => {
+            const isToday = isSameDay(day, today);
+            const isSelected = isSameDay(day, currentDate);
+            return (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  "flex items-center justify-center text-xs font-medium border-l border-border",
+                  isToday && "bg-primary/15 text-primary font-bold",
+                  isSelected && !isToday && "bg-accent"
+                )}
+                style={{ width: `${(1 / weekDays.length) * 100}%` }}
+              >
+                <span className="capitalize">{format(day, "EEE", { locale: es })}</span>
+                <span className={cn("ml-1", isToday && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-2xs")}>
+                  {format(day, "dd")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Time slots row per day */}
+        <div className="flex h-5 border-t border-border">
+          {weekDays.map((day) => (
+            <div key={`slots-${day.toISOString()}`} className="relative border-l border-border" style={{ width: `${(1 / weekDays.length) * 100}%` }}>
+              {slots.map((slot, idx) => {
+                const isHour = slot.endsWith(":00");
+                return (
+                  <div
+                    key={`${day.toISOString()}-${slot}`}
+                    className="absolute top-0 h-full flex items-center"
+                    style={{ left: `${(idx / totalSlots) * 100}%` }}
+                  >
+                    <span className={cn(
+                      "text-2xs px-0.5 border-l h-full flex items-center whitespace-nowrap",
+                      isHour ? "text-foreground border-border font-medium" : "text-muted-foreground border-timeline-grid"
+                    )}>
+                      {slot}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );
