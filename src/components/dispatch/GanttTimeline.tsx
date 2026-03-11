@@ -280,17 +280,20 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
         isSelected={isSelected}
         onClick={() => setSelectedTechnicianId(isSelected ? null : technician.id)}
       />
-      <div className="flex-1 relative h-full">
+      <div className="flex-1 relative h-full" style={{ minWidth: viewMode === "day" ? `${totalDaySlots * 40}px` : `${(weekDays?.length || 7) * totalDaySlots * 40}px` }}>
         {viewMode === "day" ? (
           <>
-            {/* Day grid lines */}
-            {Array.from({ length: WORK_END_HOUR - WORK_START_HOUR }, (_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 border-l border-timeline-grid"
-                style={{ left: `${(i / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-              />
-            ))}
+            {/* Day grid lines every 10 min */}
+            {daySlots.map((slot, i) => {
+              const isHour = slot.endsWith(":00");
+              return (
+                <div
+                  key={i}
+                  className={cn("absolute top-0 bottom-0 border-l", isHour ? "border-border" : "border-timeline-grid")}
+                  style={{ left: `${(i / totalDaySlots) * 100}%` }}
+                />
+              );
+            })}
             {/* Travel blocks */}
             {travelBlocks.map((block) => block && (
               <TravelBlock key={block.key} fromTime={block.fromTime} toTime={block.toTime} color={techBgColors[technician.color]} />

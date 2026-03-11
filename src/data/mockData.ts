@@ -227,6 +227,6 @@
    },
  ];
  
- export const WORK_START_HOUR = 8;
- export const WORK_END_HOUR = 20;
- export const TIME_SLOT_MINUTES = 15;
+export const WORK_START_HOUR = 0;
+export const WORK_END_HOUR = 24;
+export const TIME_SLOT_MINUTES = 10;
