@@ -42,24 +42,41 @@ import { es } from "date-fns/locale";
    return (duration / totalMinutes) * 100;
  }
  
+function generateTimeSlots() {
+  const slots: string[] = [];
+  for (let h = WORK_START_HOUR; h < WORK_END_HOUR; h++) {
+    for (let m = 0; m < 60; m += TIME_SLOT_MINUTES) {
+      slots.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+    }
+  }
+  return slots;
+}
+
 function DayTimeHeader() {
-  const hours = Array.from({ length: WORK_END_HOUR - WORK_START_HOUR + 1 }, (_, i) => WORK_START_HOUR + i);
+  const slots = useMemo(() => generateTimeSlots(), []);
+  const totalSlots = slots.length;
 
   return (
     <div className="flex border-b border-border bg-muted sticky top-0 z-10">
       <div className="w-56 flex-shrink-0 border-r border-border" />
-      <div className="flex-1 relative h-8">
-        {hours.map((hour, idx) => (
-          <div
-            key={hour}
-            className="absolute top-0 h-full flex items-center"
-            style={{ left: `${(idx / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-          >
-            <span className="text-2xs font-medium text-muted-foreground px-1 border-l border-border h-full flex items-center">
-              {hour.toString().padStart(2, "0")}:00
-            </span>
-          </div>
-        ))}
+      <div className="flex-1 relative h-8 overflow-x-auto" style={{ minWidth: `${totalSlots * 40}px` }}>
+        {slots.map((slot, idx) => {
+          const isHour = slot.endsWith(":00");
+          return (
+            <div
+              key={slot}
+              className="absolute top-0 h-full flex items-center"
+              style={{ left: `${(idx / totalSlots) * 100}%` }}
+            >
+              <span className={cn(
+                "text-2xs font-medium px-0.5 border-l h-full flex items-center whitespace-nowrap",
+                isHour ? "text-foreground border-border" : "text-muted-foreground border-timeline-grid"
+              )}>
+                {slot}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -67,31 +84,60 @@ function DayTimeHeader() {
 
 function WeekTimeHeader({ weekDays, currentDate }: { weekDays: Date[]; currentDate: Date }) {
   const today = new Date();
+  const slots = useMemo(() => generateTimeSlots(), []);
+  const totalSlots = slots.length;
+
   return (
     <div className="flex border-b border-border bg-muted sticky top-0 z-10">
       <div className="w-56 flex-shrink-0 border-r border-border" />
-      <div className="flex-1 flex">
-        {weekDays.map((day) => {
-          const isToday = isSameDay(day, today);
-          const isSelected = isSameDay(day, currentDate);
-          return (
-            <div
-              key={day.toISOString()}
-              className={cn(
-                "flex-1 h-8 flex items-center justify-center text-xs font-medium border-l border-border",
-                isToday && "bg-primary/15 text-primary font-bold",
-                isSelected && !isToday && "bg-accent"
-              )}
-            >
-              <span className="capitalize">
-                {format(day, "EEE", { locale: es })}
-              </span>
-              <span className={cn("ml-1", isToday && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-2xs")}>
-                {format(day, "dd")}
-              </span>
+      <div className="flex-1 overflow-x-auto" style={{ minWidth: `${weekDays.length * totalSlots * 40}px` }}>
+        {/* Day labels row */}
+        <div className="flex h-6">
+          {weekDays.map((day) => {
+            const isToday = isSameDay(day, today);
+            const isSelected = isSameDay(day, currentDate);
+            return (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  "flex items-center justify-center text-xs font-medium border-l border-border",
+                  isToday && "bg-primary/15 text-primary font-bold",
+                  isSelected && !isToday && "bg-accent"
+                )}
+                style={{ width: `${(1 / weekDays.length) * 100}%` }}
+              >
+                <span className="capitalize">{format(day, "EEE", { locale: es })}</span>
+                <span className={cn("ml-1", isToday && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-2xs")}>
+                  {format(day, "dd")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Time slots row per day */}
+        <div className="flex h-5 border-t border-border">
+          {weekDays.map((day) => (
+            <div key={`slots-${day.toISOString()}`} className="relative border-l border-border" style={{ width: `${(1 / weekDays.length) * 100}%` }}>
+              {slots.map((slot, idx) => {
+                const isHour = slot.endsWith(":00");
+                return (
+                  <div
+                    key={`${day.toISOString()}-${slot}`}
+                    className="absolute top-0 h-full flex items-center"
+                    style={{ left: `${(idx / totalSlots) * 100}%` }}
+                  >
+                    <span className={cn(
+                      "text-2xs px-0.5 border-l h-full flex items-center whitespace-nowrap",
+                      isHour ? "text-foreground border-border font-medium" : "text-muted-foreground border-timeline-grid"
+                    )}>
+                      {slot}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -200,6 +246,8 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
   const setSelectedTechnicianId = useDispatchStore((state) => state.setSelectedTechnicianId);
   const rowRef = useRef<HTMLDivElement>(null);
   const today = new Date();
+  const daySlots = useMemo(() => generateTimeSlots(), []);
+  const totalDaySlots = daySlots.length;
   
   const techServices = services
     .filter(s => s.technicianId === technician.id && s.status === "assigned")
@@ -234,17 +282,20 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
         isSelected={isSelected}
         onClick={() => setSelectedTechnicianId(isSelected ? null : technician.id)}
       />
-      <div className="flex-1 relative h-full">
+      <div className="flex-1 relative h-full" style={{ minWidth: viewMode === "day" ? `${totalDaySlots * 40}px` : `${(weekDays?.length || 7) * totalDaySlots * 40}px` }}>
         {viewMode === "day" ? (
           <>
-            {/* Day grid lines */}
-            {Array.from({ length: WORK_END_HOUR - WORK_START_HOUR }, (_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 border-l border-timeline-grid"
-                style={{ left: `${(i / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-              />
-            ))}
+            {/* Day grid lines every 10 min */}
+            {daySlots.map((slot, i) => {
+              const isHour = slot.endsWith(":00");
+              return (
+                <div
+                  key={i}
+                  className={cn("absolute top-0 bottom-0 border-l", isHour ? "border-border" : "border-timeline-grid")}
+                  style={{ left: `${(i / totalDaySlots) * 100}%` }}
+                />
+              );
+            })}
             {/* Travel blocks */}
             {travelBlocks.map((block) => block && (
               <TravelBlock key={block.key} fromTime={block.fromTime} toTime={block.toTime} color={techBgColors[technician.color]} />
@@ -256,30 +307,40 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
           </>
         ) : (
           <>
-            {/* Week day columns */}
-            {weekDays?.map((day, idx) => {
+            {/* Week day columns with time slot grid lines */}
+            {weekDays?.map((day, dayIdx) => {
               const isToday = isSameDay(day, today);
+              const numDays = weekDays.length;
               return (
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "absolute top-0 bottom-0 border-l border-timeline-grid",
+                    "absolute top-0 bottom-0",
                     isToday && "bg-primary/5"
                   )}
-                  style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%` }}
-                />
+                  style={{ left: `${(dayIdx / numDays) * 100}%`, width: `${100 / numDays}%` }}
+                >
+                  {daySlots.map((slot, i) => {
+                    const isHour = slot.endsWith(":00");
+                    return (
+                      <div
+                        key={`${dayIdx}-${i}`}
+                        className={cn("absolute top-0 bottom-0 border-l", isHour ? "border-border" : "border-timeline-grid")}
+                        style={{ left: `${(i / totalDaySlots) * 100}%` }}
+                      />
+                    );
+                  })}
+                </div>
               );
             })}
             {/* Service count badges per day */}
             {weekDays?.map((day, idx) => {
-              const dayStr = format(day, "yyyy-MM-dd");
-              const dayServices = techServices.filter(s => s.startTime && s.startTime.startsWith(dayStr));
-              const count = dayServices.length || techServices.length; // fallback: show all in current mock
+              const numDays = weekDays.length;
               return (
                 <div
                   key={`count-${day.toISOString()}`}
                   className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center"
-                  style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%` }}
+                  style={{ left: `${(idx / numDays) * 100}%`, width: `${100 / numDays}%` }}
                 >
                   {idx === 0 && techServices.length > 0 && (
                     <span className="text-2xs px-1.5 py-0.5 rounded text-primary-foreground font-medium" style={{ backgroundColor: techBgColors[technician.color] }}>
