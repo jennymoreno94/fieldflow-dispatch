@@ -296,35 +296,54 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
   );
 }
  
- export function GanttTimeline() {
-   const technicians = useDispatchStore((state) => state.technicians);
+export function GanttTimeline() {
+  const technicians = useDispatchStore((state) => state.technicians);
   const timelineFilters = useDispatchStore((state) => state.timelineFilters);
+  const todayRef = useRef<HTMLDivElement>(null);
+
+  // Calculate week days from Monday
+  const weekDays = useMemo(() => {
+    const weekStart = startOfWeek(timelineFilters.currentDate, { weekStartsOn: 1 }); // Monday
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [timelineFilters.currentDate]);
 
   // Filter technicians based on timeline filters
   const filteredTechnicians = technicians.filter((tech) => {
-    if (timelineFilters.responsible && tech.id !== timelineFilters.responsible) {
-      return false;
-    }
-    if (timelineFilters.specialty && !tech.specialties.includes(timelineFilters.specialty)) {
-      return false;
-    }
+    if (timelineFilters.responsible && tech.id !== timelineFilters.responsible) return false;
+    if (timelineFilters.specialty && !tech.specialties.includes(timelineFilters.specialty)) return false;
     return true;
   });
- 
-   return (
+
+  // Auto-scroll to today column in week view
+  useEffect(() => {
+    if (timelineFilters.viewMode === "week" && todayRef.current) {
+      todayRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [timelineFilters.viewMode, timelineFilters.currentDate]);
+
+  return (
     <div className="flex-1 bg-card border-t border-border flex flex-col min-h-0">
       <TimelineControls />
       <div className="flex-1 overflow-auto min-h-0">
-         <TimeHeader />
+        {timelineFilters.viewMode === "day" ? (
+          <DayTimeHeader />
+        ) : (
+          <WeekTimeHeader weekDays={weekDays} currentDate={timelineFilters.currentDate} />
+        )}
         {filteredTechnicians.map((technician) => (
-           <TechnicianRow key={technician.id} technician={technician} />
-         ))}
+          <TechnicianRow 
+            key={technician.id} 
+            technician={technician} 
+            viewMode={timelineFilters.viewMode}
+            weekDays={weekDays}
+          />
+        ))}
         {filteredTechnicians.length === 0 && (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
             No hay técnicos que coincidan con los filtros
           </div>
         )}
-       </div>
-     </div>
-   );
- }
+      </div>
+    </div>
+  );
+}
