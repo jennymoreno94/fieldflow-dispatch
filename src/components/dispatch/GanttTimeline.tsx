@@ -307,30 +307,40 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
           </>
         ) : (
           <>
-            {/* Week day columns */}
-            {weekDays?.map((day, idx) => {
+            {/* Week day columns with time slot grid lines */}
+            {weekDays?.map((day, dayIdx) => {
               const isToday = isSameDay(day, today);
+              const numDays = weekDays.length;
               return (
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "absolute top-0 bottom-0 border-l border-timeline-grid",
+                    "absolute top-0 bottom-0",
                     isToday && "bg-primary/5"
                   )}
-                  style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%` }}
-                />
+                  style={{ left: `${(dayIdx / numDays) * 100}%`, width: `${100 / numDays}%` }}
+                >
+                  {daySlots.map((slot, i) => {
+                    const isHour = slot.endsWith(":00");
+                    return (
+                      <div
+                        key={`${dayIdx}-${i}`}
+                        className={cn("absolute top-0 bottom-0 border-l", isHour ? "border-border" : "border-timeline-grid")}
+                        style={{ left: `${(i / totalDaySlots) * 100}%` }}
+                      />
+                    );
+                  })}
+                </div>
               );
             })}
             {/* Service count badges per day */}
             {weekDays?.map((day, idx) => {
-              const dayStr = format(day, "yyyy-MM-dd");
-              const dayServices = techServices.filter(s => s.startTime && s.startTime.startsWith(dayStr));
-              const count = dayServices.length || techServices.length; // fallback: show all in current mock
+              const numDays = weekDays.length;
               return (
                 <div
                   key={`count-${day.toISOString()}`}
                   className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center"
-                  style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%` }}
+                  style={{ left: `${(idx / numDays) * 100}%`, width: `${100 / numDays}%` }}
                 >
                   {idx === 0 && techServices.length > 0 && (
                     <span className="text-2xs px-1.5 py-0.5 rounded text-primary-foreground font-medium" style={{ backgroundColor: techBgColors[technician.color] }}>
