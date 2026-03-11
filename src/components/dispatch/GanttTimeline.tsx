@@ -246,6 +246,8 @@ function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technic
   const setSelectedTechnicianId = useDispatchStore((state) => state.setSelectedTechnicianId);
   const rowRef = useRef<HTMLDivElement>(null);
   const today = new Date();
+  const daySlots = useMemo(() => generateTimeSlots(), []);
+  const totalDaySlots = daySlots.length;
   
   const techServices = services
     .filter(s => s.technicianId === technician.id && s.status === "assigned")
