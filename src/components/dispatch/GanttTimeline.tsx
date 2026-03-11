@@ -42,29 +42,60 @@ import { es } from "date-fns/locale";
    return (duration / totalMinutes) * 100;
  }
  
- function TimeHeader() {
-   const hours = Array.from({ length: WORK_END_HOUR - WORK_START_HOUR + 1 }, (_, i) => WORK_START_HOUR + i);
-   const slots = Array.from({ length: (WORK_END_HOUR - WORK_START_HOUR) * 4 }, (_, i) => i);
- 
-   return (
-     <div className="flex border-b border-border bg-muted sticky top-0 z-10">
-       <div className="w-56 flex-shrink-0 border-r border-border" />
-       <div className="flex-1 relative h-8">
-         {hours.map((hour, idx) => (
-           <div
-             key={hour}
-             className="absolute top-0 h-full flex items-center"
-             style={{ left: `${(idx / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-           >
-             <span className="text-2xs font-medium text-muted-foreground px-1 border-l border-border h-full flex items-center">
-               {hour.toString().padStart(2, "0")}:00
-             </span>
-           </div>
-         ))}
-       </div>
-     </div>
-   );
- }
+function DayTimeHeader() {
+  const hours = Array.from({ length: WORK_END_HOUR - WORK_START_HOUR + 1 }, (_, i) => WORK_START_HOUR + i);
+
+  return (
+    <div className="flex border-b border-border bg-muted sticky top-0 z-10">
+      <div className="w-56 flex-shrink-0 border-r border-border" />
+      <div className="flex-1 relative h-8">
+        {hours.map((hour, idx) => (
+          <div
+            key={hour}
+            className="absolute top-0 h-full flex items-center"
+            style={{ left: `${(idx / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
+          >
+            <span className="text-2xs font-medium text-muted-foreground px-1 border-l border-border h-full flex items-center">
+              {hour.toString().padStart(2, "0")}:00
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WeekTimeHeader({ weekDays, currentDate }: { weekDays: Date[]; currentDate: Date }) {
+  const today = new Date();
+  return (
+    <div className="flex border-b border-border bg-muted sticky top-0 z-10">
+      <div className="w-56 flex-shrink-0 border-r border-border" />
+      <div className="flex-1 flex">
+        {weekDays.map((day) => {
+          const isToday = isSameDay(day, today);
+          const isSelected = isSameDay(day, currentDate);
+          return (
+            <div
+              key={day.toISOString()}
+              className={cn(
+                "flex-1 h-8 flex items-center justify-center text-xs font-medium border-l border-border",
+                isToday && "bg-primary/15 text-primary font-bold",
+                isSelected && !isToday && "bg-accent"
+              )}
+            >
+              <span className="capitalize">
+                {format(day, "EEE", { locale: es })}
+              </span>
+              <span className={cn("ml-1", isToday && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-2xs")}>
+                {format(day, "dd")}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
  
  function TechnicianInfo({ technician, isSelected, onClick }: { 
    technician: Technician; 
