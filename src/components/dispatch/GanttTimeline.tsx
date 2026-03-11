@@ -42,24 +42,41 @@ import { es } from "date-fns/locale";
    return (duration / totalMinutes) * 100;
  }
  
+function generateTimeSlots() {
+  const slots: string[] = [];
+  for (let h = WORK_START_HOUR; h < WORK_END_HOUR; h++) {
+    for (let m = 0; m < 60; m += TIME_SLOT_MINUTES) {
+      slots.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+    }
+  }
+  return slots;
+}
+
 function DayTimeHeader() {
-  const hours = Array.from({ length: WORK_END_HOUR - WORK_START_HOUR + 1 }, (_, i) => WORK_START_HOUR + i);
+  const slots = useMemo(() => generateTimeSlots(), []);
+  const totalSlots = slots.length;
 
   return (
     <div className="flex border-b border-border bg-muted sticky top-0 z-10">
       <div className="w-56 flex-shrink-0 border-r border-border" />
-      <div className="flex-1 relative h-8">
-        {hours.map((hour, idx) => (
-          <div
-            key={hour}
-            className="absolute top-0 h-full flex items-center"
-            style={{ left: `${(idx / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-          >
-            <span className="text-2xs font-medium text-muted-foreground px-1 border-l border-border h-full flex items-center">
-              {hour.toString().padStart(2, "0")}:00
-            </span>
-          </div>
-        ))}
+      <div className="flex-1 relative h-8 overflow-x-auto" style={{ minWidth: `${totalSlots * 40}px` }}>
+        {slots.map((slot, idx) => {
+          const isHour = slot.endsWith(":00");
+          return (
+            <div
+              key={slot}
+              className="absolute top-0 h-full flex items-center"
+              style={{ left: `${(idx / totalSlots) * 100}%` }}
+            >
+              <span className={cn(
+                "text-2xs font-medium px-0.5 border-l h-full flex items-center whitespace-nowrap",
+                isHour ? "text-foreground border-border" : "text-muted-foreground border-timeline-grid"
+              )}>
+                {slot}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
