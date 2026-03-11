@@ -1,10 +1,12 @@
- import { useRef, useEffect } from "react";
- import { useDispatchStore } from "@/hooks/useDispatchStore";
- import { Service, Technician } from "@/types/dispatch";
- import { WORK_START_HOUR, WORK_END_HOUR, TIME_SLOT_MINUTES } from "@/data/mockData";
- import { cn } from "@/lib/utils";
+import { useRef, useEffect, useMemo } from "react";
+import { useDispatchStore } from "@/hooks/useDispatchStore";
+import { Service, Technician } from "@/types/dispatch";
+import { WORK_START_HOUR, WORK_END_HOUR, TIME_SLOT_MINUTES } from "@/data/mockData";
+import { cn } from "@/lib/utils";
 import { Car, Percent } from "lucide-react";
 import { TimelineControls } from "./TimelineControls";
+import { startOfWeek, addDays, format, isSameDay } from "date-fns";
+import { es } from "date-fns/locale";
  
  const techColors: Record<string, string> = {
    "tech-1": "bg-tech-1",
