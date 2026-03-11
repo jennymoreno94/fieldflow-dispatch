@@ -1,10 +1,12 @@
- import { useRef, useEffect } from "react";
- import { useDispatchStore } from "@/hooks/useDispatchStore";
- import { Service, Technician } from "@/types/dispatch";
- import { WORK_START_HOUR, WORK_END_HOUR, TIME_SLOT_MINUTES } from "@/data/mockData";
- import { cn } from "@/lib/utils";
+import { useRef, useEffect, useMemo } from "react";
+import { useDispatchStore } from "@/hooks/useDispatchStore";
+import { Service, Technician } from "@/types/dispatch";
+import { WORK_START_HOUR, WORK_END_HOUR, TIME_SLOT_MINUTES } from "@/data/mockData";
+import { cn } from "@/lib/utils";
 import { Car, Percent } from "lucide-react";
 import { TimelineControls } from "./TimelineControls";
+import { startOfWeek, addDays, format, isSameDay } from "date-fns";
+import { es } from "date-fns/locale";
  
  const techColors: Record<string, string> = {
    "tech-1": "bg-tech-1",
@@ -40,29 +42,60 @@ import { TimelineControls } from "./TimelineControls";
    return (duration / totalMinutes) * 100;
  }
  
- function TimeHeader() {
-   const hours = Array.from({ length: WORK_END_HOUR - WORK_START_HOUR + 1 }, (_, i) => WORK_START_HOUR + i);
-   const slots = Array.from({ length: (WORK_END_HOUR - WORK_START_HOUR) * 4 }, (_, i) => i);
- 
-   return (
-     <div className="flex border-b border-border bg-muted sticky top-0 z-10">
-       <div className="w-56 flex-shrink-0 border-r border-border" />
-       <div className="flex-1 relative h-8">
-         {hours.map((hour, idx) => (
-           <div
-             key={hour}
-             className="absolute top-0 h-full flex items-center"
-             style={{ left: `${(idx / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-           >
-             <span className="text-2xs font-medium text-muted-foreground px-1 border-l border-border h-full flex items-center">
-               {hour.toString().padStart(2, "0")}:00
-             </span>
-           </div>
-         ))}
-       </div>
-     </div>
-   );
- }
+function DayTimeHeader() {
+  const hours = Array.from({ length: WORK_END_HOUR - WORK_START_HOUR + 1 }, (_, i) => WORK_START_HOUR + i);
+
+  return (
+    <div className="flex border-b border-border bg-muted sticky top-0 z-10">
+      <div className="w-56 flex-shrink-0 border-r border-border" />
+      <div className="flex-1 relative h-8">
+        {hours.map((hour, idx) => (
+          <div
+            key={hour}
+            className="absolute top-0 h-full flex items-center"
+            style={{ left: `${(idx / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
+          >
+            <span className="text-2xs font-medium text-muted-foreground px-1 border-l border-border h-full flex items-center">
+              {hour.toString().padStart(2, "0")}:00
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WeekTimeHeader({ weekDays, currentDate }: { weekDays: Date[]; currentDate: Date }) {
+  const today = new Date();
+  return (
+    <div className="flex border-b border-border bg-muted sticky top-0 z-10">
+      <div className="w-56 flex-shrink-0 border-r border-border" />
+      <div className="flex-1 flex">
+        {weekDays.map((day) => {
+          const isToday = isSameDay(day, today);
+          const isSelected = isSameDay(day, currentDate);
+          return (
+            <div
+              key={day.toISOString()}
+              className={cn(
+                "flex-1 h-8 flex items-center justify-center text-xs font-medium border-l border-border",
+                isToday && "bg-primary/15 text-primary font-bold",
+                isSelected && !isToday && "bg-accent"
+              )}
+            >
+              <span className="capitalize">
+                {format(day, "EEE", { locale: es })}
+              </span>
+              <span className={cn("ml-1", isToday && "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-2xs")}>
+                {format(day, "dd")}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
  
  function TechnicianInfo({ technician, isSelected, onClick }: { 
    technician: Technician; 
@@ -161,107 +194,156 @@ import { TimelineControls } from "./TimelineControls";
    );
  }
  
- function TechnicianRow({ technician }: { technician: Technician }) {
-   const services = useDispatchStore((state) => state.services);
-   const selectedTechnicianId = useDispatchStore((state) => state.selectedTechnicianId);
-   const setSelectedTechnicianId = useDispatchStore((state) => state.setSelectedTechnicianId);
-   const rowRef = useRef<HTMLDivElement>(null);
-   
-   const techServices = services
-     .filter(s => s.technicianId === technician.id && s.status === "assigned")
-     .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+function TechnicianRow({ technician, viewMode, weekDays }: { technician: Technician; viewMode: "day" | "week"; weekDays?: Date[] }) {
+  const services = useDispatchStore((state) => state.services);
+  const selectedTechnicianId = useDispatchStore((state) => state.selectedTechnicianId);
+  const setSelectedTechnicianId = useDispatchStore((state) => state.setSelectedTechnicianId);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const today = new Date();
+  
+  const techServices = services
+    .filter(s => s.technicianId === technician.id && s.status === "assigned")
+    .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+
+  const isSelected = selectedTechnicianId === technician.id;
+
+  useEffect(() => {
+    if (isSelected && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [isSelected]);
+
+  // Generate travel blocks between services
+  const travelBlocks = techServices.slice(0, -1).map((service, idx) => {
+    const nextService = techServices[idx + 1];
+    if (!service.startTime || !nextService.startTime) return null;
+    
+    const endMinutes = timeToMinutes(service.startTime) + service.estimatedDuration;
+    const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, "0")}:${(endMinutes % 60).toString().padStart(2, "0")}`;
+    
+    return { fromTime: endTime, toTime: nextService.startTime, key: `${service.id}-${nextService.id}` };
+  }).filter(Boolean);
+
+  return (
+    <div 
+      ref={rowRef}
+      className={cn("gantt-row", isSelected && "ring-2 ring-inset ring-primary")}
+    >
+      <TechnicianInfo 
+        technician={technician} 
+        isSelected={isSelected}
+        onClick={() => setSelectedTechnicianId(isSelected ? null : technician.id)}
+      />
+      <div className="flex-1 relative h-full">
+        {viewMode === "day" ? (
+          <>
+            {/* Day grid lines */}
+            {Array.from({ length: WORK_END_HOUR - WORK_START_HOUR }, (_, i) => (
+              <div
+                key={i}
+                className="absolute top-0 bottom-0 border-l border-timeline-grid"
+                style={{ left: `${(i / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
+              />
+            ))}
+            {/* Travel blocks */}
+            {travelBlocks.map((block) => block && (
+              <TravelBlock key={block.key} fromTime={block.fromTime} toTime={block.toTime} color={techBgColors[technician.color]} />
+            ))}
+            {/* Service blocks */}
+            {techServices.map((service) => (
+              <ServiceBlock key={service.id} service={service} technician={technician} />
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Week day columns */}
+            {weekDays?.map((day, idx) => {
+              const isToday = isSameDay(day, today);
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={cn(
+                    "absolute top-0 bottom-0 border-l border-timeline-grid",
+                    isToday && "bg-primary/5"
+                  )}
+                  style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%` }}
+                />
+              );
+            })}
+            {/* Service count badges per day */}
+            {weekDays?.map((day, idx) => {
+              const dayStr = format(day, "yyyy-MM-dd");
+              const dayServices = techServices.filter(s => s.startTime && s.startTime.startsWith(dayStr));
+              const count = dayServices.length || techServices.length; // fallback: show all in current mock
+              return (
+                <div
+                  key={`count-${day.toISOString()}`}
+                  className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center"
+                  style={{ left: `${(idx / 7) * 100}%`, width: `${100 / 7}%` }}
+                >
+                  {idx === 0 && techServices.length > 0 && (
+                    <span className="text-2xs px-1.5 py-0.5 rounded text-primary-foreground font-medium" style={{ backgroundColor: techBgColors[technician.color] }}>
+                      {techServices.length} servicios
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
  
-   const isSelected = selectedTechnicianId === technician.id;
- 
-   useEffect(() => {
-     if (isSelected && rowRef.current) {
-       rowRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
-     }
-   }, [isSelected]);
- 
-   // Generate travel blocks between services
-   const travelBlocks = techServices.slice(0, -1).map((service, idx) => {
-     const nextService = techServices[idx + 1];
-     if (!service.startTime || !nextService.startTime) return null;
-     
-     const endMinutes = timeToMinutes(service.startTime) + service.estimatedDuration;
-     const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, "0")}:${(endMinutes % 60).toString().padStart(2, "0")}`;
-     
-     return { fromTime: endTime, toTime: nextService.startTime, key: `${service.id}-${nextService.id}` };
-   }).filter(Boolean);
- 
-   return (
-     <div 
-       ref={rowRef}
-       className={cn("gantt-row", isSelected && "ring-2 ring-inset ring-primary")}
-     >
-       <TechnicianInfo 
-         technician={technician} 
-         isSelected={isSelected}
-         onClick={() => setSelectedTechnicianId(isSelected ? null : technician.id)}
-       />
-       <div className="flex-1 relative h-full">
-         {/* Grid lines */}
-         {Array.from({ length: WORK_END_HOUR - WORK_START_HOUR }, (_, i) => (
-           <div
-             key={i}
-             className="absolute top-0 bottom-0 border-l border-timeline-grid"
-             style={{ left: `${(i / (WORK_END_HOUR - WORK_START_HOUR)) * 100}%` }}
-           />
-         ))}
-         
-         {/* Travel blocks */}
-         {travelBlocks.map((block) => block && (
-           <TravelBlock
-             key={block.key}
-             fromTime={block.fromTime}
-             toTime={block.toTime}
-             color={techBgColors[technician.color]}
-           />
-         ))}
-         
-         {/* Service blocks */}
-         {techServices.map((service) => (
-           <ServiceBlock
-             key={service.id}
-             service={service}
-             technician={technician}
-           />
-         ))}
-       </div>
-     </div>
-   );
- }
- 
- export function GanttTimeline() {
-   const technicians = useDispatchStore((state) => state.technicians);
+export function GanttTimeline() {
+  const technicians = useDispatchStore((state) => state.technicians);
   const timelineFilters = useDispatchStore((state) => state.timelineFilters);
+  const todayRef = useRef<HTMLDivElement>(null);
+
+  // Calculate week days from Monday
+  const weekDays = useMemo(() => {
+    const weekStart = startOfWeek(timelineFilters.currentDate, { weekStartsOn: 1 }); // Monday
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [timelineFilters.currentDate]);
 
   // Filter technicians based on timeline filters
   const filteredTechnicians = technicians.filter((tech) => {
-    if (timelineFilters.responsible && tech.id !== timelineFilters.responsible) {
-      return false;
-    }
-    if (timelineFilters.specialty && !tech.specialties.includes(timelineFilters.specialty)) {
-      return false;
-    }
+    if (timelineFilters.responsible && tech.id !== timelineFilters.responsible) return false;
+    if (timelineFilters.specialty && !tech.specialties.includes(timelineFilters.specialty)) return false;
     return true;
   });
- 
-   return (
+
+  // Auto-scroll to today column in week view
+  useEffect(() => {
+    if (timelineFilters.viewMode === "week" && todayRef.current) {
+      todayRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [timelineFilters.viewMode, timelineFilters.currentDate]);
+
+  return (
     <div className="flex-1 bg-card border-t border-border flex flex-col min-h-0">
       <TimelineControls />
       <div className="flex-1 overflow-auto min-h-0">
-         <TimeHeader />
+        {timelineFilters.viewMode === "day" ? (
+          <DayTimeHeader />
+        ) : (
+          <WeekTimeHeader weekDays={weekDays} currentDate={timelineFilters.currentDate} />
+        )}
         {filteredTechnicians.map((technician) => (
-           <TechnicianRow key={technician.id} technician={technician} />
-         ))}
+          <TechnicianRow 
+            key={technician.id} 
+            technician={technician} 
+            viewMode={timelineFilters.viewMode}
+            weekDays={weekDays}
+          />
+        ))}
         {filteredTechnicians.length === 0 && (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
             No hay técnicos que coincidan con los filtros
           </div>
         )}
-       </div>
-     </div>
-   );
- }
+      </div>
+    </div>
+  );
+}
