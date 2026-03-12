@@ -290,8 +290,8 @@ function TechnicianRow({ technician, viewMode, weekDays, slots, totalSlots }: {
               return (
                 <div
                   key={i}
-                  className={cn("absolute top-0 bottom-0 border-l", isHour ? "border-border" : "border-timeline-grid")}
-                  style={{ left: `${i * SLOT_WIDTH}px` }}
+                  className={cn("absolute top-0 bottom-0 border-l border-b border-timeline-grid", isHour && "border-l-border")}
+                  style={{ left: `${i * SLOT_WIDTH}px`, width: `${SLOT_WIDTH}px` }}
                 />
               );
             })}
